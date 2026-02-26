@@ -12,7 +12,7 @@ def generate_study_material(subject):
     context_parts = []
     for c in chunks:
         context_parts.append(
-            f"[chunk_id: {c['chunk_id']}, file: {c['file_name']}]\n{c['text']}"
+            f"[page_num: {c.get('page_num', 'Unknown')}, file: {c['file_name']}]\n{c['text']}"
         )
     context = "\n\n".join(context_parts)
 
@@ -22,8 +22,8 @@ def generate_study_material(subject):
         "Context:\n" + context + "\n\n"
         "Generate exactly:\n"
         "- 5 MCQs, each with 4 options (A/B/C/D), the correct answer letter, "
-        "a short explanation, and the source chunk_id.\n"
-        "- 3 short-answer questions with model answers and the source chunk_id.\n\n"
+        "a short explanation, and the source page_num.\n"
+        "- 3 short-answer questions with model answers and the source page_num.\n\n"
         "Return ONLY valid JSON in this exact format (no markdown, no extra text):\n"
         "{\n"
         '  "mcqs": [\n'
@@ -32,14 +32,14 @@ def generate_study_material(subject):
         '      "options": {"A": "...", "B": "...", "C": "...", "D": "..."},\n'
         '      "correct": "A",\n'
         '      "explanation": "...",\n'
-        '      "chunk_id": 0\n'
+        '      "page_num": 1\n'
         "    }\n"
         "  ],\n"
         '  "short_questions": [\n'
         "    {\n"
         '      "question": "...",\n'
         '      "answer": "...",\n'
-        '      "chunk_id": 0\n'
+        '      "page_num": 1\n'
         "    }\n"
         "  ]\n"
         "}"

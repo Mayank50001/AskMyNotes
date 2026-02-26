@@ -154,6 +154,13 @@
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('loading-state').style.display = 'block';
 
+        // Typing indicator
+        const typing = document.createElement('div');
+        typing.className = 'chat-bubble answer mb-3';
+        typing.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        document.getElementById('answer-container').prepend(typing);
+        document.getElementById('answer-container').style.display = 'block';
+
         try {
             const res = await fetch('/api/ask/', {
                 method: 'POST',
@@ -163,9 +170,10 @@
             const data = await res.json();
 
             document.getElementById('loading-state').style.display = 'none';
+            typing.remove();
 
             if (res.ok) {
-                document.getElementById('answer-text').textContent = data.answer;
+                document.getElementById('answer-text').innerHTML = marked.parse(data.answer);
 
                 const badge = document.getElementById('confidence-badge');
                 badge.textContent = data.confidence + ' confidence';
@@ -180,7 +188,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="fw-semibold" style="color: var(--accent-light);">📄 ${c.file}</span>
                             <span class="badge" style="background: var(--bg-primary); color: var(--text-muted);">
-                                Chunk #${c.chunk_id}
+                                Excerpt ${i + 1}
                             </span>
                         </div>
                         <p class="mb-0 small" style="color: var(--text-secondary); line-height: 1.6;">${c.snippet}</p>
@@ -199,7 +207,8 @@
             }
         } catch (err) {
             document.getElementById('loading-state').style.display = 'none';
-            document.getElementById('answer-text').textContent = 'Request failed: ' + err.message;
+            if (typing) typing.remove();
+            document.getElementById('answer-text').innerHTML = `<span style="color: var(--danger)">Request failed: ${err.message}</span>`;
             document.getElementById('answer-container').style.display = 'block';
         } finally {
             btn.disabled = false;

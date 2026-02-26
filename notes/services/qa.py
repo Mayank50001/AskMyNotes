@@ -8,28 +8,28 @@ CHUNK_OVERLAP = 250
 
 
 def process_pdf(file_path, file_name, subject_name):
-    text = ""
+    pages = []
     with pdfplumber.open(file_path) as pdf:
-        for page in pdf.pages:
+        for i, page in enumerate(pdf.pages):
             page_text = page.extract_text()
             if page_text:
-                text += page_text + "\n"
+                pages.append({"page_num": i + 1, "text": page_text + "\n"})
 
     chunks = []
-    start = 0
-    chunk_id = 0
-    while start < len(text):
-        end = start + CHUNK_SIZE
-        chunk_text = text[start:end].strip()
-        if chunk_text:
-            chunks.append({
-                "subject": subject_name,
-                "file_name": file_name,
-                "chunk_id": chunk_id,
-                "text": chunk_text,
-            })
-            chunk_id += 1
-        start += CHUNK_SIZE - CHUNK_OVERLAP
+    for page in pages:
+        text = page["text"]
+        start = 0
+        while start < len(text):
+            end = start + CHUNK_SIZE
+            chunk_text = text[start:end].strip()
+            if chunk_text:
+                chunks.append({
+                    "subject": subject_name,
+                    "file_name": file_name,
+                    "page_num": page["page_num"],
+                    "text": chunk_text,
+                })
+            start += CHUNK_SIZE - CHUNK_OVERLAP
 
     return chunks
 
@@ -65,7 +65,7 @@ def ask_question(subject, question):
     for r in results:
         citations.append({
             "file": r["file_name"],
-            "chunk_id": r["chunk_id"],
+            "page_num": r.get("page_num", "Unknown"),
             "snippet": r["text"][:200],
         })
 

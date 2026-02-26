@@ -228,7 +228,7 @@
                     <div class="explanation" style="display:none;">
                         <div class="explanation-box">
                             <strong>💡 Explanation:</strong> ${q.explanation}
-                            ${q.chunk_id !== undefined ? `<br><span class="text-muted" style="font-size: 0.8rem;">Source: Chunk #${q.chunk_id}</span>` : ''}
+                            ${q.page_num !== undefined ? `<br><span class="text-muted" style="font-size: 0.8rem;">Source: Page ${q.page_num}</span>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -250,7 +250,7 @@
                     </button>
                     <div class="short-answer-box" style="display:none;">
                         <p class="mb-1">${q.answer}</p>
-                        ${q.chunk_id !== undefined ? `<span class="text-muted" style="font-size: 0.8rem;">Source: Chunk #${q.chunk_id}</span>` : ''}
+                        ${q.page_num !== undefined ? `<span class="text-muted" style="font-size: 0.8rem;">Source: Page ${q.page_num}</span>` : ''}
                     </div>
                 </div>`
                 ).join('');

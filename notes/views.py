@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from django.shortcuts import render
-from .models import Subject, Document
+from .models import Subject, Document, ChatMessage, ChatSession
 from .serializers import SubjectSerializer, AskRequestSerializer, StudyRequestSerializer
 from .services.embeddings import embed_texts
 from .services.vectorstore import add_to_index
@@ -88,18 +88,50 @@ class AskView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        subject = serializer.validated_data['subject']
+        subject_name = serializer.validated_data['subject']
         question = serializer.validated_data['question']
+        session_id = request.data.get('session_id')
 
         try:
-            Subject.objects.get(name=subject)
+            subject = Subject.objects.get(name=subject_name)
         except Subject.DoesNotExist:
             return Response(
-                {"error": f"Subject '{subject}' not found."},
+                {"error": f"Subject '{subject_name}' not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        result = ask_question(subject, question)
+        if session_id:
+            try:
+                session = ChatSession.objects.get(id=session_id, subject=subject)
+            except ChatSession.DoesNotExist:
+                return Response(
+                    {"error": f"Chat session '{session_id}' not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            chat_count = subject.sessions.count() + 1
+            session = ChatSession.objects.create(subject=subject, name=f"Chat {chat_count}")
+
+        # Save user message
+        ChatMessage.objects.create(
+            session=session,
+            role='user',
+            content=question
+        )
+
+        result = ask_question(subject_name, question)
+
+        # Save bot response
+        if "error" not in result:
+            ChatMessage.objects.create(
+                session=session,
+                role='bot',
+                content=result.get("answer", ""),
+                confidence=result.get("confidence", ""),
+                citations=result.get("citations", [])
+            )
+
+        result["session_id"] = session.id
         return Response(result)
 
 
@@ -139,11 +171,63 @@ class SubjectDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         docs = subject.documents.all().values('id', 'original_name', 'uploaded_at')
+        
+        sessions_data = []
+        for session in subject.sessions.all().prefetch_related('messages'):
+            messages = session.messages.all().values('id', 'role', 'content', 'confidence', 'citations', 'created_at')
+            sessions_data.append({
+                "id": session.id,
+                "name": session.name,
+                "created_at": session.created_at,
+                "messages": list(messages)
+            })
+            
         return Response({
             "id": subject.id,
             "name": subject.name,
             "documents": list(docs),
+            "sessions": sessions_data,
         })
+
+
+class SubjectDeleteView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def delete(self, request, pk):
+        try:
+            subject = Subject.objects.get(pk=pk)
+            subject.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Subject.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class DocumentDeleteView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def delete(self, request, pk):
+        try:
+            doc = Document.objects.get(pk=pk)
+            # Notice: The file must also be deleted from disk and vector store in a complete implementation.
+            doc.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Document.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class ChatSessionDeleteView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def delete(self, request, pk):
+        try:
+            session = ChatSession.objects.get(pk=pk)
+            session.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ChatSession.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 def home_view(request):
