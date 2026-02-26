@@ -1,0 +1,211 @@
+{% extends "notes/base.html" %}
+{% block title_suffix %} — Chat{% endblock %}
+{% block nav_chat %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-bubble {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .chat-bubble.answer {
+        border-left: 3px solid var(--accent);
+    }
+
+    .citation-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.875rem;
+        transition: border-color 0.2s;
+    }
+
+    .citation-card:hover {
+        border-color: var(--accent);
+    }
+
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--accent-light);
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        80%,
+        100% {
+            transform: scale(0);
+        }
+
+        40% {
+            transform: scale(1);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>💬 Ask Your Notes</h2>
+    <p>Ask questions and get answers sourced directly from your uploaded PDFs.</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Input Area -->
+        <div class="card glow-border p-4 mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="section-title">Subject</div>
+                    <select class="form-select" id="chat-subject">
+                        <option value="">Select subject...</option>
+                        {% for s in subjects %}
+                        <option value="{{ s.name }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <div class="section-title">Question</div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="chat-question"
+                            placeholder="What would you like to know?" maxlength="1000">
+                        <button class="btn btn-primary px-4" id="ask-btn">
+                            <span id="ask-btn-text">Ask</span>
+                            <span class="spinner-border spinner-border-sm spinner ms-1" id="ask-spinner"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" style="display:none;" class="text-center py-4">
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+            <p class="text-muted mt-2 small">Searching your notes...</p>
+        </div>
+
+        <!-- Answer Area -->
+        <div id="answer-container" style="display:none;">
+            <div class="chat-bubble answer mb-3 fade-in">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size:1.2rem;">🤖</span>
+                        <span class="fw-semibold">Answer</span>
+                    </div>
+                    <span class="badge" id="confidence-badge"></span>
+                </div>
+                <div id="answer-text" style="line-height: 1.7; font-size: 0.95rem;"></div>
+            </div>
+
+            <div id="citations-container" style="display:none;">
+                <div class="section-title mt-4">📎 Citations</div>
+                <div id="citations-list" class="d-flex flex-column gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="text-center py-5">
+            <div style="font-size: 4rem; opacity: 0.3;">💬</div>
+            <p class="text-muted">Select a subject and ask a question to get started.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('ask-btn').addEventListener('click', askQuestion);
+    document.getElementById('chat-question').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') askQuestion();
+    });
+
+    async function askQuestion() {
+        const subject = document.getElementById('chat-subject').value;
+        const question = document.getElementById('chat-question').value.trim();
+        if (!subject || !question) return;
+
+        const btn = document.getElementById('ask-btn');
+        const spinner = document.getElementById('ask-spinner');
+        const btnText = document.getElementById('ask-btn-text');
+        btn.disabled = true;
+        spinner.classList.add('active');
+        btnText.textContent = '';
+
+        document.getElementById('answer-container').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('loading-state').style.display = 'block';
+
+        try {
+            const res = await fetch('/api/ask/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ subject, question })
+            });
+            const data = await res.json();
+
+            document.getElementById('loading-state').style.display = 'none';
+
+            if (res.ok) {
+                document.getElementById('answer-text').textContent = data.answer;
+
+                const badge = document.getElementById('confidence-badge');
+                badge.textContent = data.confidence + ' confidence';
+                badge.className = 'badge badge-' + data.confidence.toLowerCase();
+
+                document.getElementById('answer-container').style.display = 'block';
+
+                if (data.citations && data.citations.length > 0) {
+                    const list = document.getElementById('citations-list');
+                    list.innerHTML = data.citations.map((c, i) =>
+                        `<div class="citation-card fade-in" style="animation-delay: ${i * 100}ms;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold" style="color: var(--accent-light);">📄 ${c.file}</span>
+                            <span class="badge" style="background: var(--bg-primary); color: var(--text-muted);">
+                                Chunk #${c.chunk_id}
+                            </span>
+                        </div>
+                        <p class="mb-0 small" style="color: var(--text-secondary); line-height: 1.6;">${c.snippet}</p>
+                    </div>`
+                    ).join('');
+                    document.getElementById('citations-container').style.display = 'block';
+                } else {
+                    document.getElementById('citations-container').style.display = 'none';
+                }
+            } else {
+                document.getElementById('answer-text').textContent = data.error || 'An error occurred.';
+                document.getElementById('confidence-badge').textContent = '';
+                document.getElementById('confidence-badge').className = 'badge';
+                document.getElementById('answer-container').style.display = 'block';
+                document.getElementById('citations-container').style.display = 'none';
+            }
+        } catch (err) {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('answer-text').textContent = 'Request failed: ' + err.message;
+            document.getElementById('answer-container').style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            spinner.classList.remove('active');
+            btnText.textContent = 'Ask';
+        }
+    }
+</script>
+{% endblock %}

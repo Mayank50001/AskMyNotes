@@ -1,0 +1,288 @@
+{% extends "notes/base.html" %}
+{% block title_suffix %} — Study Mode{% endblock %}
+{% block nav_study %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mcq-option {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .mcq-option:hover {
+        border-color: var(--accent);
+        background: var(--bg-card-hover);
+    }
+
+    .mcq-option .option-letter {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .mcq-option.correct {
+        border-color: var(--success) !important;
+        background: rgba(63, 185, 80, 0.1) !important;
+    }
+
+    .mcq-option.correct .option-letter {
+        background: var(--success);
+        border-color: var(--success);
+        color: #000;
+    }
+
+    .mcq-option.wrong {
+        border-color: var(--danger) !important;
+        background: rgba(248, 81, 73, 0.1) !important;
+    }
+
+    .mcq-option.wrong .option-letter {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+    }
+
+    .mcq-option.disabled {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .mcq-option.correct.disabled,
+    .mcq-option.wrong.disabled {
+        opacity: 1;
+    }
+
+    .explanation-box {
+        background: rgba(124, 58, 237, 0.1);
+        border: 1px solid rgba(124, 58, 237, 0.2);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .question-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .question-number {
+        width: 32px;
+        height: 32px;
+        background: var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+
+    .short-answer-box {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 0.75rem;
+        animation: fadeIn 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📝 Study Mode</h2>
+    <p>Generate quizzes and practice questions from your uploaded notes.</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-9 mx-auto">
+        <!-- Controls -->
+        <div class="card glow-border p-4 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <div class="section-title">Subject</div>
+                    <select class="form-select" id="study-subject">
+                        <option value="">Select subject...</option>
+                        {% for s in subjects %}
+                        <option value="{{ s.name }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-primary w-100 py-2" id="generate-btn">
+                        <span id="gen-btn-text">⚡ Generate Study Material</span>
+                        <span class="spinner-border spinner-border-sm spinner ms-1" id="study-spinner"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="study-error" style="display:none;" class="alert alert-danger fade-in"></div>
+
+        <!-- Loading -->
+        <div id="study-loading" style="display:none;" class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <p class="text-muted">Generating study material from your notes...</p>
+        </div>
+
+        <!-- MCQ Section -->
+        <div id="mcq-section" style="display:none;">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span style="font-size:1.3rem;">🧠</span>
+                <h5 class="mb-0 fw-bold">Multiple Choice Questions</h5>
+            </div>
+            <div id="mcq-list"></div>
+        </div>
+
+        <!-- Short Answer Section -->
+        <div id="short-section" style="display:none;" class="mt-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span style="font-size:1.3rem;">✍️</span>
+                <h5 class="mb-0 fw-bold">Short Answer Questions</h5>
+            </div>
+            <div id="short-list"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="study-empty" class="text-center py-5">
+            <div style="font-size: 4rem; opacity: 0.3;">📝</div>
+            <p class="text-muted">Select a subject and click Generate to create study material.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+        const subject = document.getElementById('study-subject').value;
+        if (!subject) return;
+
+        const btn = document.getElementById('generate-btn');
+        const spinner = document.getElementById('study-spinner');
+        const btnText = document.getElementById('gen-btn-text');
+        btn.disabled = true;
+        spinner.classList.add('active');
+        btnText.textContent = 'Generating...';
+
+        document.getElementById('mcq-section').style.display = 'none';
+        document.getElementById('short-section').style.display = 'none';
+        document.getElementById('study-error').style.display = 'none';
+        document.getElementById('study-empty').style.display = 'none';
+        document.getElementById('study-loading').style.display = 'block';
+
+        try {
+            const res = await fetch('/api/study/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ subject })
+            });
+            const data = await res.json();
+            document.getElementById('study-loading').style.display = 'none';
+
+            if (!res.ok) {
+                document.getElementById('study-error').textContent = data.error || 'An error occurred.';
+                document.getElementById('study-error').style.display = 'block';
+                return;
+            }
+
+            if (data.mcqs && data.mcqs.length > 0) {
+                const mcqHtml = data.mcqs.map((q, i) => {
+                    const optionsHtml = Object.entries(q.options).map(([key, val]) =>
+                        `<div class="mcq-option" data-mcq="${i}" data-option="${key}"
+                          onclick="checkAnswer(this, '${q.correct}')">
+                        <span class="option-letter">${key}</span>
+                        <span>${val}</span>
+                    </div>`
+                    ).join('');
+                    return `<div class="question-card fade-in" style="animation-delay: ${i * 100}ms;">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <span class="question-number">${i + 1}</span>
+                        <p class="fw-semibold mb-0" style="padding-top: 4px;">${q.question}</p>
+                    </div>
+                    ${optionsHtml}
+                    <div class="explanation" style="display:none;">
+                        <div class="explanation-box">
+                            <strong>💡 Explanation:</strong> ${q.explanation}
+                            ${q.chunk_id !== undefined ? `<br><span class="text-muted" style="font-size: 0.8rem;">Source: Chunk #${q.chunk_id}</span>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+                }).join('');
+                document.getElementById('mcq-list').innerHTML = mcqHtml;
+                document.getElementById('mcq-section').style.display = 'block';
+            }
+
+            if (data.short_questions && data.short_questions.length > 0) {
+                const shortHtml = data.short_questions.map((q, i) =>
+                    `<div class="question-card fade-in" style="animation-delay: ${(i + 5) * 100}ms;">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <span class="question-number">${i + 1}</span>
+                        <p class="fw-semibold mb-0" style="padding-top: 4px;">${q.question}</p>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm"
+                            onclick="this.nextElementSibling.style.display='block'; this.style.display='none';">
+                        👁️ Reveal Answer
+                    </button>
+                    <div class="short-answer-box" style="display:none;">
+                        <p class="mb-1">${q.answer}</p>
+                        ${q.chunk_id !== undefined ? `<span class="text-muted" style="font-size: 0.8rem;">Source: Chunk #${q.chunk_id}</span>` : ''}
+                    </div>
+                </div>`
+                ).join('');
+                document.getElementById('short-list').innerHTML = shortHtml;
+                document.getElementById('short-section').style.display = 'block';
+            }
+        } catch (err) {
+            document.getElementById('study-loading').style.display = 'none';
+            document.getElementById('study-error').textContent = 'Request failed: ' + err.message;
+            document.getElementById('study-error').style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            spinner.classList.remove('active');
+            btnText.textContent = '⚡ Generate Study Material';
+        }
+    });
+
+    function checkAnswer(el, correct) {
+        const card = el.closest('.question-card');
+        if (card.dataset.answered) return;
+        card.dataset.answered = 'true';
+
+        const options = card.querySelectorAll('.mcq-option');
+        options.forEach(opt => {
+            opt.classList.add('disabled');
+            if (opt.dataset.option === correct) {
+                opt.classList.add('correct');
+            } else if (opt === el && opt.dataset.option !== correct) {
+                opt.classList.add('wrong');
+            }
+        });
+        card.querySelector('.explanation').style.display = 'block';
+    }
+</script>
+{% endblock %}

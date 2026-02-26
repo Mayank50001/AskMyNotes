@@ -1,0 +1,701 @@
+{% extends "notes/base.html" %}
+{% block title_suffix %} — Home{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block container_class %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .app-layout {
+        display: flex;
+        height: calc(100vh - 65px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+        width: 280px;
+        min-width: 280px;
+        background: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .sidebar-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
+    }
+
+    .sidebar-footer {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--border-color);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-align: center;
+    }
+
+    .new-subject-btn {
+        width: 100%;
+        background: transparent;
+        border: 1px dashed var(--border-color);
+        color: var(--text-secondary);
+        border-radius: 8px;
+        padding: 0.625rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .new-subject-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent-light);
+        background: var(--accent-glow);
+    }
+
+    .subject-item {
+        border-radius: 8px;
+        margin-bottom: 4px;
+        overflow: hidden;
+        transition: background 0.15s;
+    }
+
+    .subject-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.625rem 0.75rem;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background 0.15s;
+        gap: 0.5rem;
+    }
+
+    .subject-header:hover {
+        background: var(--bg-card-hover);
+    }
+
+    .subject-header.active {
+        background: var(--accent-glow);
+    }
+
+    .subject-header.active .subject-name {
+        color: var(--accent-light);
+    }
+
+    .subject-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .subject-count {
+        font-size: 0.7rem;
+        background: var(--bg-primary);
+        padding: 2px 7px;
+        border-radius: 10px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+
+    .subject-toggle {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+        flex-shrink: 0;
+    }
+
+    .subject-toggle.open {
+        transform: rotate(90deg);
+    }
+
+    .subject-docs {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+    }
+
+    .subject-docs.open {
+        max-height: 500px;
+    }
+
+    .doc-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.75rem 0.4rem 2rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .doc-item .doc-icon {
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Main Chat ── */
+    .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--bg-primary);
+    }
+
+    .chat-top-bar {
+        padding: 0.875rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .chat-input-area {
+        padding: 1rem 1.5rem 1.25rem;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+
+    .msg {
+        max-width: 85%;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        line-height: 1.7;
+        animation: fadeIn 0.25s ease;
+    }
+
+    .msg-user {
+        background: var(--accent);
+        color: #fff;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+    }
+
+    .msg-bot {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-bot .confidence {
+        display: inline-block;
+        margin-top: 0.5rem;
+    }
+
+    .msg-bot .citations-section {
+        margin-top: 0.75rem;
+    }
+
+    .msg-bot .citation-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin: 0.25rem 0.25rem 0 0;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .msg-bot .citation-pill:hover {
+        border-color: var(--accent);
+    }
+
+    .citation-detail {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        animation: fadeIn 0.2s ease;
+    }
+
+    /* Input bar */
+    .input-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 0.375rem 0.5rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-bar:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .input-bar input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        padding: 0.5rem;
+        outline: none;
+    }
+
+    .input-bar input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .icon-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .icon-btn-upload {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .icon-btn-upload:hover {
+        background: var(--accent-glow);
+        color: var(--accent-light);
+    }
+
+    .icon-btn-send {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .icon-btn-send:hover {
+        background: #6d28d9;
+        transform: scale(1.05);
+    }
+
+    .icon-btn-send:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Typing indicator */
+    .typing-dots span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: var(--accent-light);
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        80%,
+        100% {
+            transform: scale(0);
+        }
+
+        40% {
+            transform: scale(1);
+        }
+    }
+
+    /* New subject modal */
+    .modal-content {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        border-bottom-color: var(--border-color);
+    }
+
+    .modal-footer {
+        border-top-color: var(--border-color);
+    }
+
+    /* Upload toast */
+    .upload-toast {
+        position: fixed;
+        bottom: 5rem;
+        right: 1.5rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        z-index: 1050;
+        animation: fadeIn 0.25s ease;
+        min-width: 280px;
+    }
+
+    .empty-chat {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.4;
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 60px;
+            min-width: 60px;
+        }
+
+        .sidebar .subject-name,
+        .sidebar .subject-count,
+        .sidebar .doc-item,
+        .sidebar-header span,
+        .sidebar-footer,
+        .new-subject-btn span {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hidden file input -->
+<input type="file" id="file-input" accept=".pdf" style="display:none;">
+
+<!-- New Subject Modal -->
+<div class="modal fade" id="newSubjectModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">New Subject</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-alert"></div>
+                <input type="text" class="form-control" id="new-subject-name" placeholder="e.g. CN, OS, DBMS"
+                    maxlength="50">
+                <small class="text-muted mt-2 d-block">{{ subjects|length }} / 3 subjects created.</small>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-primary w-100" id="create-subject-btn">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Toast -->
+<div id="upload-toast" style="display:none;" class="upload-toast">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span>📄</span>
+        <span class="fw-semibold" style="font-size:0.9rem;" id="upload-file-name">file.pdf</span>
+    </div>
+    <div class="progress" style="height: 4px; background: var(--bg-primary); border-radius: 2px;">
+        <div class="progress-bar" id="upload-progress"
+            style="background: var(--accent); width: 0%; transition: width 0.5s;"></div>
+    </div>
+    <small class="text-muted mt-1 d-block" id="upload-status-text">Uploading & indexing...</small>
+</div>
+
+<div class="app-layout">
+    <!-- ── Sidebar ── -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-subject-btn" data-bs-toggle="modal" data-bs-target="#newSubjectModal">
+                <span>+ </span>New Subject
+            </button>
+        </div>
+        <div class="sidebar-body" id="sidebar-subjects">
+            {% for s in subjects %}
+            <div class="subject-item" data-subject="{{ s.name }}">
+                <div class="subject-header {% if forloop.first %}active{% endif %}"
+                    onclick="selectSubject('{{ s.name }}', this)">
+                    <span class="subject-name">📚 {{ s.name }}</span>
+                    <span class="subject-count">{{ s.documents.count }}</span>
+                    <span class="subject-toggle" onclick="event.stopPropagation(); toggleDocs(this)">▶</span>
+                </div>
+                <div class="subject-docs" id="docs-{{ s.name }}">
+                    {% for doc in s.documents.all %}
+                    <div class="doc-item">
+                        <span class="doc-icon">📄</span>
+                        <span style="overflow:hidden; text-overflow:ellipsis;">{{ doc.original_name }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="doc-item" style="color: var(--text-muted); font-style: italic;">No files yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4" style="color: var(--text-muted); font-size: 0.85rem;">
+                No subjects yet.<br>Click + to create one.
+            </div>
+            {% endfor %}
+        </div>
+        <div class="sidebar-footer">
+            AskMyNotes • Hackathon MVP
+        </div>
+    </div>
+
+    <!-- ── Chat Main ── -->
+    <div class="chat-main">
+        <div class="chat-top-bar">
+            <select class="form-select" id="chat-subject" style="max-width: 200px;">
+                {% for s in subjects %}
+                <option value="{{ s.name }}" {% if forloop.first %}selected{% endif %}>{{ s.name }}</option>
+                {% empty %}
+                <option value="">No subjects</option>
+                {% endfor %}
+            </select>
+            <span class="text-muted" style="font-size: 0.8rem;">Ask anything about your notes</span>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="empty-chat" id="empty-chat">
+                <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">📚</div>
+                <h5 class="fw-bold mb-1">AskMyNotes</h5>
+                <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 300px; text-align: center;">
+                    Upload PDFs and ask questions. Your answers come directly from your notes.
+                </p>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="input-bar">
+                <button class="icon-btn icon-btn-upload" id="upload-btn" title="Upload PDF">
+                    ➕
+                </button>
+                <input type="text" id="chat-input" placeholder="Ask your notes..." maxlength="1000" autocomplete="off">
+                <button class="icon-btn icon-btn-send" id="send-btn" title="Send">
+                    ▲
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedSubject = '{{ subjects.0.name|default:"" }}';
+
+    // ── Subject Selection ──
+    function selectSubject(name, el) {
+        selectedSubject = name;
+        document.querySelectorAll('.subject-header').forEach(h => h.classList.remove('active'));
+        if (el) el.classList.add('active');
+        document.getElementById('chat-subject').value = name;
+    }
+
+    document.getElementById('chat-subject').addEventListener('change', (e) => {
+        selectedSubject = e.target.value;
+        document.querySelectorAll('.subject-header').forEach(h => {
+            h.classList.toggle('active', h.closest('.subject-item')?.dataset.subject === selectedSubject);
+        });
+    });
+
+    // ── Toggle Docs Dropdown ──
+    function toggleDocs(toggleEl) {
+        const item = toggleEl.closest('.subject-item');
+        const docs = item.querySelector('.subject-docs');
+        const isOpen = docs.classList.contains('open');
+        docs.classList.toggle('open');
+        toggleEl.classList.toggle('open');
+    }
+
+    // ── Create Subject ──
+    document.getElementById('create-subject-btn').addEventListener('click', async () => {
+        const name = document.getElementById('new-subject-name').value.trim();
+        if (!name) return;
+        const res = await fetch('/api/subjects/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            location.reload();
+        } else {
+            document.getElementById('modal-alert').innerHTML =
+                `<div class="alert alert-danger py-2" style="font-size:0.85rem;">${data.error || JSON.stringify(data)}</div>`;
+        }
+    });
+
+    // ── Upload PDF ──
+    document.getElementById('upload-btn').addEventListener('click', () => {
+        if (!selectedSubject) return;
+        document.getElementById('file-input').click();
+    });
+
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !selectedSubject) return;
+
+        const toast = document.getElementById('upload-toast');
+        const progress = document.getElementById('upload-progress');
+        document.getElementById('upload-file-name').textContent = file.name;
+        document.getElementById('upload-status-text').textContent = 'Uploading & indexing...';
+        toast.style.display = 'block';
+        progress.style.width = '30%';
+
+        const formData = new FormData();
+        formData.append('subject', selectedSubject);
+        formData.append('file', file);
+
+        try {
+            progress.style.width = '60%';
+            const res = await fetch('/api/upload/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            });
+            const data = await res.json();
+            progress.style.width = '100%';
+
+            if (res.ok) {
+                document.getElementById('upload-status-text').textContent = '✅ ' + data.message;
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                document.getElementById('upload-status-text').textContent = '❌ ' + (data.error || 'Failed');
+                progress.style.background = 'var(--danger)';
+                setTimeout(() => { toast.style.display = 'none'; }, 4000);
+            }
+        } catch (err) {
+            document.getElementById('upload-status-text').textContent = '❌ ' + err.message;
+            progress.style.background = 'var(--danger)';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+        e.target.value = '';
+    });
+
+    // ── Chat / Ask ──
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('chat-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const question = input.value.trim();
+        const subject = document.getElementById('chat-subject').value;
+        if (!question || !subject) return;
+
+        const messages = document.getElementById('chat-messages');
+        const emptyChat = document.getElementById('empty-chat');
+        if (emptyChat) emptyChat.remove();
+
+        // User message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg msg-user';
+        userMsg.textContent = question;
+        messages.appendChild(userMsg);
+
+        input.value = '';
+        document.getElementById('send-btn').disabled = true;
+
+        // Typing indicator
+        const typing = document.createElement('div');
+        typing.className = 'msg msg-bot';
+        typing.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+        messages.appendChild(typing);
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+            const res = await fetch('/api/ask/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ subject, question })
+            });
+            const data = await res.json();
+            typing.remove();
+
+            const botMsg = document.createElement('div');
+            botMsg.className = 'msg msg-bot';
+
+            let html = `<div>${data.answer || data.error || 'An error occurred.'}</div>`;
+
+            if (data.confidence) {
+                html += `<span class="badge badge-${data.confidence.toLowerCase()} confidence">${data.confidence}</span>`;
+            }
+
+            if (data.citations && data.citations.length > 0) {
+                html += '<div class="citations-section">';
+                data.citations.forEach((c, i) => {
+                    html += `<span class="citation-pill" onclick="toggleCitation(this, ${i})">
+                    📄 ${c.file} · #${c.chunk_id}
+                </span>`;
+                });
+                html += '<div class="citation-details-area">';
+                data.citations.forEach((c, i) => {
+                    html += `<div class="citation-detail" id="cite-${Date.now()}-${i}" style="display:none;">
+                    <strong>${c.file}</strong> — Chunk #${c.chunk_id}<br>
+                    <span style="color: var(--text-muted);">${c.snippet}</span>
+                </div>`;
+                });
+                html += '</div></div>';
+            }
+
+            botMsg.innerHTML = html;
+            messages.appendChild(botMsg);
+        } catch (err) {
+            typing.remove();
+            const errMsg = document.createElement('div');
+            errMsg.className = 'msg msg-bot';
+            errMsg.innerHTML = `<span style="color: var(--danger);">Request failed: ${err.message}</span>`;
+            messages.appendChild(errMsg);
+        }
+
+        document.getElementById('send-btn').disabled = false;
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function toggleCitation(el, idx) {
+        const area = el.closest('.citations-section').querySelector('.citation-details-area');
+        const details = area.children;
+        const detail = details[idx];
+        if (detail) {
+            detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+</script>
+{% endblock %}
