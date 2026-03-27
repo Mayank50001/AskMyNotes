@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -9,21 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-card: #1c2333;
-            --bg-card-hover: #222d3f;
-            --border-color: #30363d;
-            --accent: #7c3aed;
-            --accent-light: #a78bfa;
-            --accent-glow: rgba(124, 58, 237, 0.3);
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --success: #3fb950;
-            --warning: #d29922;
-            --danger: #f85149;
-            --info: #58a6ff;
+            --bg-primary: #fff7ed;
+            --bg-secondary: rgba(255, 255, 255, 0.7);
+            --bg-card: rgba(255, 255, 255, 0.65);
+            --bg-card-hover: rgba(255, 255, 255, 0.85);
+            --border-color: rgba(251, 146, 60, 0.3);
+            --accent: #ea580c;
+            --accent-light: #f59e0b;
+            --accent-glow: rgba(234, 88, 12, 0.15);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --gradient-primary: linear-gradient(135deg, #ea580c, #ef4444, #f59e0b);
         }
 
         * {
@@ -32,21 +33,53 @@
 
         body {
             background-color: var(--bg-primary);
+            background-image: radial-gradient(rgba(234, 88, 12, 0.08) 2px, transparent 2px);
+            background-size: 32px 32px;
             color: var(--text-primary);
             min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.12) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(60px);
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -10%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(60px);
         }
 
         .navbar {
             background: var(--bg-secondary) !important;
             border-bottom: 1px solid var(--border-color);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             padding: 0.75rem 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
         }
 
         .navbar-brand {
             font-weight: 700;
             font-size: 1.25rem;
-            color: var(--accent-light) !important;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
         }
 
@@ -56,26 +89,31 @@
             font-size: 0.9rem;
             padding: 0.5rem 1rem !important;
             border-radius: 8px;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             margin: 0 2px;
         }
 
         .nav-link:hover,
         .nav-link.active {
-            color: var(--accent-light) !important;
+            color: var(--accent) !important;
             background: var(--accent-glow);
+            transform: translateY(-1px);
         }
 
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-            transition: border-color 0.2s ease;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(234, 88, 12, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.3s ease;
         }
 
         .card:hover {
-            border-color: rgba(124, 58, 237, 0.3);
+            border-color: rgba(234, 88, 12, 0.3);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(234, 88, 12, 0.08);
         }
 
         .form-control,
@@ -102,19 +140,20 @@
         }
 
         .btn-primary {
-            background: var(--accent);
+            background: var(--gradient-primary);
             border: none;
             border-radius: 8px;
             font-weight: 600;
             font-size: 0.9rem;
             padding: 0.625rem 1.25rem;
-            transition: all 0.2s ease;
+            color: white;
+            transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
-            background: #6d28d9;
-            box-shadow: 0 4px 16px var(--accent-glow);
-            transform: translateY(-1px);
+            opacity: 0.9;
+            box-shadow: 0 8px 20px var(--accent-glow);
+            transform: translateY(-2px);
         }
 
         .btn-outline-primary {
@@ -272,6 +311,12 @@
 
         .loading-pulse {
             animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .text-gradient {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
     </style>
     {% block extra_css %}{% endblock %}

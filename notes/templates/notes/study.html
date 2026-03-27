@@ -7,14 +7,16 @@
     .mcq-option {
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 0.75rem 1rem;
         margin-bottom: 0.5rem;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
     }
 
     .mcq-option:hover {
@@ -83,9 +85,12 @@
     .question-card {
         background: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1rem;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 30px rgba(234, 88, 12, 0.05);
     }
 
     .question-number {
@@ -114,7 +119,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>📝 Study Mode</h2>
+    <h2 class="text-gradient">📝 Study Mode</h2>
     <p>Generate quizzes and practice questions from your uploaded notes.</p>
 </div>
 
