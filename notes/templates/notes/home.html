@@ -636,6 +636,9 @@
                     ➕
                 </button>
                 <input type="text" id="chat-input" placeholder="Ask your notes..." maxlength="1000" autocomplete="off">
+                <button class="icon-btn icon-btn-mic" id="mic-btn" title="Voice Input">
+                    🎙️
+                </button>
                 <button class="icon-btn icon-btn-send" id="send-btn" title="Send">
                     ▲
                 </button>
@@ -732,7 +735,10 @@
                     msgDiv.textContent = msg.content;
                 } else {
                     let answerHtml = msg.content ? marked.parse(msg.content) : 'An error occurred.';
-                    let html = `<div class="markdown-content">${answerHtml}</div>`;
+                    let html = `<div class="d-flex justify-content-between align-items-start">
+                                    <div class="markdown-content w-100">${answerHtml}</div>
+                                    <span class="speak-btn ms-2" title="Read Aloud" onclick="speakText(this)" style="cursor:pointer; opacity:0.6; font-size:1.1rem; flex-shrink:0;">🔊</span>
+                                </div>`;
 
                     if (msg.confidence) {
                         html += `<div class="mt-2"><span class="badge badge-${msg.confidence.toLowerCase()} confidence">${msg.confidence} Confidence</span></div>`;
@@ -909,7 +915,10 @@
             botMsg.className = 'msg msg-bot';
 
             let answerHtml = data.answer ? marked.parse(data.answer) : (data.error || 'An error occurred.');
-            let html = `<div class="markdown-content">${answerHtml}</div>`;
+            let html = `<div class="d-flex justify-content-between align-items-start">
+                            <div class="markdown-content w-100">${answerHtml}</div>
+                            <span class="speak-btn ms-2" title="Read Aloud" onclick="speakText(this)" style="cursor:pointer; opacity:0.6; font-size:1.1rem; flex-shrink:0;">🔊</span>
+                        </div>`;
 
             if (data.confidence) {
                 html += `<div class="mt-2"><span class="badge badge-${data.confidence.toLowerCase()} confidence">${data.confidence} Confidence</span></div>`;
@@ -953,6 +962,105 @@
         const detail = details[idx];
         if (detail) {
             detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // ── Speech to Text (Voice Input) ──
+    const micBtn = document.getElementById('mic-btn');
+    const chatInput = document.getElementById('chat-input');
+    let recognition;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        try {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                if (micBtn) {
+                    micBtn.style.color = 'var(--danger)';
+                    micBtn.classList.add('recording');
+                }
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                if (chatInput) {
+                    chatInput.value += (chatInput.value ? ' ' : '') + transcript;
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.error('Speech recognition error', e.error);
+                alert("Microphone Error: " + e.error + ". Make sure you have a microphone connected and your browser has permission to access it.");
+                if (micBtn) {
+                    micBtn.style.color = '';
+                    micBtn.classList.remove('recording');
+                }
+            };
+
+            recognition.onend = () => {
+                if (micBtn) {
+                    micBtn.style.color = '';
+                    micBtn.classList.remove('recording');
+                }
+            };
+
+            if (micBtn) {
+                micBtn.addEventListener('click', () => {
+                    try {
+                        if (micBtn.classList.contains('recording')) {
+                            recognition.stop();
+                        } else {
+                            recognition.start();
+                        }
+                    } catch (err) {
+                        alert("Could not start microphone: " + err.message);
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("SpeechRecognition init error", err);
+            if (micBtn) {
+                micBtn.addEventListener('click', () => alert("Microphone init failed: " + err.message));
+            }
+        }
+    } else {
+        if (micBtn) {
+            micBtn.addEventListener('click', () => alert("Your browser doesn't support Web Speech API. Please try Chrome."));
+        }
+    }
+
+    // ── Text to Speech (Voice Output) ──
+    function speakText(el) {
+        if (!('speechSynthesis' in window)) {
+            alert("Sorry, your browser doesn't support text to speech!");
+            return;
+        }
+
+        try {
+            const msgDiv = el.closest('.msg-bot');
+            const contentDiv = msgDiv.querySelector('.markdown-content');
+            if (!contentDiv) return;
+
+            const textToSpeak = contentDiv.innerText;
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+
+            utterance.onstart = () => { el.style.opacity = '1'; el.style.color = 'var(--accent)'; };
+            utterance.onend = () => { el.style.opacity = '0.6'; el.style.color = ''; };
+            utterance.onerror = (e) => {
+                console.error("SpeechSynthesis error:", e.error);
+                alert("Text-to-Speech failed: " + e.error + ". Your OS might be missing voice packages.");
+                el.style.opacity = '0.6'; el.style.color = '';
+            };
+
+            window.speechSynthesis.speak(utterance);
+        } catch (err) {
+            alert("Exception in TTS: " + err.message);
         }
     }
 
