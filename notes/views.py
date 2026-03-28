@@ -20,11 +20,6 @@ class SubjectListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        if Subject.objects.count() >= 3:
-            return Response(
-                {"error": "Maximum 3 subjects allowed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         serializer = SubjectSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -119,7 +114,14 @@ class AskView(APIView):
             content=question
         )
 
-        result = ask_question(subject_name, question)
+        # Retrieve last 10 messages before the current one
+        history_msgs = ChatMessage.objects.filter(session=session).order_by('-created_at')[1:11]
+        history_str = ""
+        for msg in reversed(list(history_msgs)):
+            role_name = "User" if msg.role == 'user' else "Assistant"
+            history_str += f"{role_name}: {msg.content}\n\n"
+
+        result = ask_question(subject_name, question, history=history_str)
 
         # Save bot response
         if "error" not in result:
